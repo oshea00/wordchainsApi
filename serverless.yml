@@ -1,0 +1,49 @@
+service: limpid-wordchains-backend
+
+plugins:
+  - serverless-offline
+
+custom:
+  allowedHeaders:
+    - Accept
+    - Content-Type
+    - Content-Length
+    - Authorization
+    - X-Amz-Date
+    - X-Api-Key
+    - X-Amz-Security-Token
+    - X-Amz-User-Agent
+    - app_user_id
+    - app_user_name
+  
+provider:
+  name: aws
+  runtime: dotnetcore3.1
+  region: us-west-2
+  stage: dev
+  iamRoleStatements:
+    - Effect: 'Allow'
+      Action:
+        - 's3:ListBucket'
+        - 's3:GetObject'
+      Resource:
+        - '*'
+
+package:
+  individually: true
+
+functions:
+  get-wordchain:
+    description: GET /wordchain
+    handler: CsharpHandlers::WordChains.Handler::WordChain
+    package:
+      artifact: bin/Release/netcoreapp3.1/wordchain.zip
+    events:
+      - http:
+          path: wordchain
+          method: get
+          cors:
+            origin: '*'
+            headers: ${self:custom.allowedHeaders}
+
+    

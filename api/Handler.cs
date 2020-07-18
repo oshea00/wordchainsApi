@@ -14,8 +14,6 @@ namespace WordChains
 {
     public class Handler
     {
-      List<string> dictionary;
-
       public APIGatewayProxyResponse WordChain(APIGatewayProxyRequest request)
       {
         Console.WriteLine($"{string.Join(",",request.QueryStringParameters)}");
@@ -42,10 +40,6 @@ namespace WordChains
           }        
         };
 
-      }
-
-      public Handler()
-      {
       }
     }    
 }

@@ -126,7 +126,6 @@ class App extends Component {
           </p>
           <p className="intro">
             The crew passes one word along, changing one letter at a time.
-            Every step must be a real word.
           </p>
           <ul className="rules">
             <li>Both words must be the <strong>same length</strong>.</li>

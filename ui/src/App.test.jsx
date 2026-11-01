@@ -127,3 +127,49 @@ test.each([
   expect(await screen.findByRole('alert')).toHaveTextContent(message);
   expect(screen.queryByRole('region', { name: 'Word chain' })).not.toBeInTheDocument();
 });
+
+test('links to the explanation of the algorithm', () => {
+  render(<App />);
+  screen.getAllByRole('link', { name: 'How it works' }).forEach(link =>
+    expect(link).toHaveAttribute('href', '/how-it-works.html'));
+});
+
+test('hides the critters from assistive technology', () => {
+  const { container } = render(<App />);
+  const critters = container.querySelectorAll('svg');
+  expect(critters.length).toBeGreaterThan(0);
+  critters.forEach(critter => expect(critter).toHaveAttribute('aria-hidden', 'true'));
+});
+
+test('the crew makes way for a result', async () => {
+  axios.get.mockResolvedValue({ data: ['cat', 'cot'] });
+  const { container } = render(<App />);
+  expect(container.querySelector('.crew')).toBeInTheDocument();
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText('From'), 'cat');
+  await user.type(screen.getByLabelText('To'), 'cot{Enter}');
+  await screen.findByRole('region', { name: 'Word chain' });
+  expect(container.querySelector('.crew')).not.toBeInTheDocument();
+});
+
+test('gives each step of a long chain a critter', async () => {
+  const chain = ['game', 'came', 'cams', 'cats', 'oats', 'opts', 'opes', 'open', 'oven', 'over'];
+  axios.get.mockResolvedValue({ data: chain });
+  await search('game', 'over');
+  const result = await screen.findByRole('region', { name: 'Word chain' });
+  expect(result.querySelectorAll('svg')).toHaveLength(chain.length);
+});
+
+test('the owl falls asleep only when no chain exists', async () => {
+  axios.get.mockRejectedValueOnce({ response: { status: 404, data: { code: 'no_chain' } } });
+  await search('echo', 'over');
+  await screen.findByRole('alert');
+  expect(screen.getByTestId('sleepy-eyes')).toBeInTheDocument();
+});
+
+test('the owl stays awake for other errors', async () => {
+  axios.get.mockRejectedValue({ response: { status: 429 } });
+  await search('cat', 'dog');
+  await screen.findByRole('alert');
+  expect(screen.queryByTestId('sleepy-eyes')).not.toBeInTheDocument();
+});

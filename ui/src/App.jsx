@@ -2,6 +2,8 @@ import React, { Component } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Button } from 'react-bootstrap'
 import axios from 'axios'
+import { CREW, Owl } from './mascots'
+import './theme.css';
 import './App.css';
 
 const API_URL = import.meta.env.VITE_WORDCHAIN_API_URL
@@ -9,6 +11,9 @@ const API_URL = import.meta.env.VITE_WORDCHAIN_API_URL
 const MIN_LETTERS = 2
 const MAX_LETTERS = 8
 const BEST_MAX_LETTERS = 6
+
+const CARD_COLORS = ['#ffb4c8', '#b7e86a', '#9ed8ff', '#ffc27a', '#d4b8ff']
+const CARD_TILTS = ['-2deg', '1.5deg', '-1deg', '2deg', '-1.5deg']
 
 const plural = (count, noun) => `${count} ${noun}${count === 1 ? '' : 's'}`
 
@@ -60,13 +65,28 @@ const ChainWord = ({ word, previous }) => (
   </span>
 )
 
+const ChainCard = ({ word, previous, step }) => {
+  const Critter = CREW[step % CREW.length]
+  return (
+    <li style={{
+      '--card': CARD_COLORS[step % CARD_COLORS.length],
+      '--tilt': CARD_TILTS[step % CARD_TILTS.length],
+      '--step': step,
+    }}>
+      <div className="card-critter"><Critter happy={step > 0 && step % CREW.length === 0} /></div>
+      <ChainWord word={word} previous={previous} />
+    </li>
+  )
+}
+
 class App extends Component {
   state = {
     from: "",
     to: "",
     chain: [],
     isSearching: false,
-    error: ""
+    error: "",
+    noChain: false
   }
 
   handleSearch = event => {
@@ -75,7 +95,7 @@ class App extends Component {
     const to = this.state.to.trim().toLowerCase();
 
     const invalid = validate(from, to)
-    this.setState({chain: [], error: invalid})
+    this.setState({chain: [], error: invalid, noChain: false})
     if (invalid) return
 
     this.setState({isSearching: true})
@@ -84,7 +104,11 @@ class App extends Component {
         this.setState({chain: res.data, isSearching: false})
       })
       .catch(error => {
-        this.setState({error: errorMessage(error, from, to), isSearching: false})
+        this.setState({
+          error: errorMessage(error, from, to),
+          noChain: error.response?.data?.code === 'no_chain',
+          isSearching: false
+        })
       })
   }
 
@@ -92,22 +116,19 @@ class App extends Component {
   handleChangeTo = event => { this.setState({ to: event.target.value })}
 
   render() {
-    const { from, to, isSearching, chain, error} = this.state
+    const { from, to, isSearching, chain, error, noChain } = this.state
     const steps = chain.length - 1
     return (
       <div className="page">
         <main>
           <h1>Word Chains Finder</h1>
           <p className="intro">
-            Turn one word into another by changing one letter at a time.
+            The crew passes one word along, changing one letter at a time.
             Every step must be a real word.
           </p>
-          <ol className="example" aria-label="Example chain">
-            <li>cold</li><li>cord</li><li>word</li><li>ward</li><li>warm</li>
-          </ol>
           <ul className="rules">
             <li>Both words must be the <strong>same length</strong>.</li>
-            <li>Use {MIN_LETTERS} to {MAX_LETTERS} letters. {MIN_LETTERS + 1} to {BEST_MAX_LETTERS} letters work best.</li>
+            <li>Use {MIN_LETTERS} to {MAX_LETTERS} letters. {MIN_LETTERS + 1} to {BEST_MAX_LETTERS} letters work best. <a href="/how-it-works.html">How it works</a></li>
           </ul>
 
           <form className="search" onSubmit={this.handleSearch} noValidate>
@@ -148,14 +169,25 @@ class App extends Component {
             <p className="hint" aria-live="polite">{lengthHint(from.trim(), to.trim())}</p>
           </form>
 
-          {error && <p className="error" role="alert">{error}</p>}
+          {error && (
+            <div className="error" role="alert">
+              <div className="error-critter"><Owl sleepy={noChain} /></div>
+              <p>{error}</p>
+            </div>
+          )}
+
+          {!error && chain.length === 0 && (
+            <div className="crew">
+              {CREW.map((Critter, i) => <div key={i}><Critter /></div>)}
+            </div>
+          )}
 
           {chain.length > 0 && (
             <section className="result" aria-label="Word chain">
               <h2>{steps === 0 ? "Same word, no steps needed" : plural(steps, 'step')}</h2>
               <ol className="chain">
                 {chain.map((word, i) => (
-                  <li key={word}><ChainWord word={word} previous={chain[i - 1]} /></li>
+                  <ChainCard key={word} word={word} previous={chain[i - 1]} step={i} />
                 ))}
               </ol>
             </section>
@@ -164,6 +196,8 @@ class App extends Component {
         <footer>
           Word list derived from <a href="http://wordlist.aspell.net/">SCOWL</a> by Kevin Atkinson.{' '}
           <a href="/third-party-notices.txt">Credits and license</a>
+          {' · '}
+          <a href="/how-it-works.html">How it works</a>
         </footer>
       </div>
     );

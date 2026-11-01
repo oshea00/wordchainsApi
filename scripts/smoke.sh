@@ -36,6 +36,7 @@ query() {
 }
 
 check "site" "$(status "$SITE_URL")" 200
+check "how it works" "$(status "$SITE_URL/how-it-works.html")" 200
 check "preflight" "$(status -X OPTIONS -H "Origin: $SITE_URL" -H 'Access-Control-Request-Method: GET' "$API_URL")" 200
 check "game over" "$(query game over)" '["game","came","cams","cats","oats","opts","opes","open","oven","over"]'
 check "cold warm" "$(query cold warm)" '["cold","cord","word","ward","warm"]'

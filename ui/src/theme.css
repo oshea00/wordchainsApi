@@ -1,0 +1,77 @@
+:root {
+  color-scheme: dark;
+  --ground: #15132b;
+  --panel: #262248;
+  --ink: #fbf7ff;
+  --muted: #cfc9e6;
+  --line: #6f64c4;
+  --accent: #ffd84d;
+  --on-accent: #2a1a00;
+  --on-card: #1b1433;
+  --display: 'Lilita One', 'Trebuchet MS', sans-serif;
+  --body: 'Nunito Sans', system-ui, sans-serif;
+  --mono: 'Space Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+
+body {
+  margin: 0;
+  font-family: var(--body);
+  background: var(--ground);
+  color: var(--ink);
+}
+
+.page {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 16px 16px;
+}
+
+main {
+  flex: 1;
+}
+
+h1 {
+  margin: 0 0 12px;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(2.6rem, 8vw, 3.75rem);
+  line-height: 1.05;
+  color: var(--accent);
+}
+
+h2 {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.9rem;
+}
+
+a {
+  color: var(--accent);
+}
+
+a:hover {
+  color: #ffeca3;
+}
+
+a:focus-visible,
+input:focus-visible,
+button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+footer {
+  margin-top: 32px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.critter {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

@@ -122,15 +122,6 @@ const HowItWorks = () => (
         </table>
       </div>
 
-      <h2>What it costs</h2>
-      <p>
-        The graph is rebuilt for every search. That costs more than storing it
-        once, but the app needs no database and the whole dictionary ships inside
-        the code. The word comparisons are the slow part, because each reachable
-        word is compared with every word of its length. Popular lengths take a
-        couple of seconds at worst.
-      </p>
-
       <h2>Where the words come from</h2>
       <p>
         The list is derived from <a href="http://wordlist.aspell.net/">SCOWL</a> by

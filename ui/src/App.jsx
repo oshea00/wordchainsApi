@@ -1,6 +1,4 @@
 import React, { Component } from 'react';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import { Button } from 'react-bootstrap'
 import axios from 'axios'
 import { CREW, Owl } from './mascots'
 import './theme.css';
@@ -158,14 +156,9 @@ class App extends Component {
                 onChange={this.handleChangeTo}
                 value={to} />
             </div>
-            <Button
-              className="search-button"
-              type="submit"
-              variant="warning"
-              disabled={isSearching}
-            >
+            <button className="search-button" type="submit" disabled={isSearching}>
               {isSearching ? "Searching..." : "Search"}
-            </Button>
+            </button>
             <p className="hint" aria-live="polite">{lengthHint(from.trim(), to.trim())}</p>
           </form>
 

@@ -1,7 +1,10 @@
 # Word Chains API
 
-## Serverless framework example with C#
+## AWS Lambda example with C#
 Example of using .NET 10 as the AWS lambda runtime with a fun puzzle.
+
+## Build and deploy
+Run `./build.sh` to create the Lambda package, then `./deploy.sh` to upload it to the existing function with the AWS CLI.
 
 ## Example Chains
 * [trout truth](https://qux5svesmk.execute-api.us-west-2.amazonaws.com/dev/wordchain?from=trout&to=truth)

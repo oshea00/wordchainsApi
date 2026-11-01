@@ -2,6 +2,5 @@
     "profile":"default",
     "region" : "us-west-2",
     "configuration": "Release",
-    "framework": "net10.0",
-    "template": "serverless.yml"
+    "framework": "net10.0"
 }

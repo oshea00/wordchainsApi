@@ -1,15 +1,55 @@
-# Word Chains API
+# Word Chains
 
-## AWS Lambda example with C#
-Example of using .NET 10 as the AWS lambda runtime with a fun puzzle.
+A demo app that finds a chain of one-letter changes between two words. Try it at [wordchain.limpidfox.com](https://wordchain.limpidfox.com).
 
-## Build and deploy
-Run `./build.sh` to create the Lambda package, then `./deploy.sh` to upload it to the existing function with the AWS CLI.
+Not all words have paths to each other, and shorter words work best. For example:
 
-## Example Chains
-* [trout truth](https://qux5svesmk.execute-api.us-west-2.amazonaws.com/dev/wordchain?from=trout&to=truth)
-* [game over](https://qux5svesmk.execute-api.us-west-2.amazonaws.com/dev/wordchain?from=game&to=over)
-* [cat dog](https://qux5svesmk.execute-api.us-west-2.amazonaws.com/dev/wordchain?from=cat&to=dog)
+* [trout truth](https://api.limpidfox.com/qux5svesmk/wordchain?from=trout&to=truth)
+* [game over](https://api.limpidfox.com/qux5svesmk/wordchain?from=game&to=over)
+* [cat dog](https://api.limpidfox.com/qux5svesmk/wordchain?from=cat&to=dog)
 
-Not all words have paths to each other - in fact quite a few pairs are fruitless. Shorter words are better.
+## Repo layout
 
+| Folder | Contents |
+|---|---|
+| `backend/` | C# Lambda function on .NET 10 |
+| `ui/` | React site built with Vite, requires Node 24 |
+| `infra/` | CloudFormation template for the AWS resources |
+| `scripts/` | Build, test, deploy and smoke test scripts |
+
+## Build, test and deploy
+
+```
+scripts/test.sh             # build the C# project and run the UI tests
+scripts/build.sh            # create the Lambda package and the site
+scripts/deploy.sh infra     # apply infra/template.yaml
+scripts/deploy.sh api       # deploy the Lambda package
+scripts/deploy.sh ui        # upload the site and clear the CloudFront cache
+scripts/smoke.sh public     # check the live site and API
+```
+
+Stack changes are listed for approval before they are applied. They need the AWS CLI with access to the account. Set `ALERT_EMAIL` to change the shutoff address.
+
+## Cost protection
+
+The API is public, so these limits keep traffic from running up a bill:
+
+- API Gateway allows 5 requests per second, with a burst of 10.
+- The Lambda function can run at most 3 copies at once.
+- If the function is called more than 5,000 times in an hour, a CloudWatch alarm emails the alert address and blocks the API. The alarm can take up to about two hours to act.
+- API Gateway request logging is off, and logs are kept for 14 days.
+
+The API stays blocked until you restore it:
+
+```
+scripts/deploy.sh reopen
+```
+
+## AWS resources
+
+`infra/template.yaml` defines the `limpid-wordchains-backend-dev` stack in us-west-2. These items are outside the stack:
+
+- Route 53 records for `wordchain.limpidfox.com` and `api.limpidfox.com`
+- ACM certificates, which are shared with other sites
+
+To change the API's methods, rename `ApiGatewayDeploymentPublic` in the template so a new deployment is published.

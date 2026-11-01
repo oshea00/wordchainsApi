@@ -1,0 +1,419 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Word chain site, API and cost protection
+
+Parameters:
+  CodeS3Key:
+    Type: String
+    Description: Key of the Lambda package in the deployment bucket
+  AlertEmail:
+    Type: String
+    Description: Address notified when the automatic shutoff runs
+    NoEcho: true
+
+Resources:
+  # Deployment bucket for Lambda packages
+  ServerlessDeploymentBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  ServerlessDeploymentBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ServerlessDeploymentBucket
+      PolicyDocument:
+        Statement:
+          - Action: s3:*
+            Effect: Deny
+            Principal: '*'
+            Resource:
+              - !Sub arn:${AWS::Partition}:s3:::${ServerlessDeploymentBucket}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  # Word chain function
+  GetDashwordchainLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/limpid-wordchains-backend-dev-get-wordchain
+      RetentionInDays: 14
+
+  IamRoleLambdaExecution:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: limpid-wordchains-backend-dev-lambda
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:CreateLogGroup
+                Resource:
+                  - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/limpid-wordchains-backend-dev*:*
+              - Effect: Allow
+                Action:
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/limpid-wordchains-backend-dev*:*:*
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject
+                Resource:
+                  - '*'
+      Path: /
+      RoleName: !Sub limpid-wordchains-backend-dev-${AWS::Region}-lambdaRole
+
+  GetDashwordchainLambdaFunction:
+    Type: AWS::Lambda::Function
+    DependsOn:
+      - GetDashwordchainLogGroup
+    Properties:
+      Code:
+        S3Bucket: !Ref ServerlessDeploymentBucket
+        S3Key: !Ref CodeS3Key
+      FunctionName: limpid-wordchains-backend-dev-get-wordchain
+      Handler: CsharpHandlers::WordChains.Handler::WordChain
+      MemorySize: 1024
+      Role: !GetAtt IamRoleLambdaExecution.Arn
+      Runtime: dotnet10
+      Timeout: 6
+      Description: GET /wordchain
+      ReservedConcurrentExecutions: 3
+
+  GetDashwordchainLambdaPermissionApiGateway:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt GetDashwordchainLambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/*
+
+  # API
+  ApiGatewayRestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: dev-limpid-wordchains-backend
+      EndpointConfiguration:
+        Types:
+          - EDGE
+      Policy: ''
+
+  ApiGatewayResourceWordchain:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
+      PathPart: wordchain
+      RestApiId: !Ref ApiGatewayRestApi
+
+  ApiGatewayMethodWordchainOptions:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: OPTIONS
+      MethodResponses:
+        - StatusCode: '200'
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+          ResponseModels: {}
+      RequestParameters: {}
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{statusCode:200}'
+        ContentHandling: CONVERT_TO_TEXT
+        IntegrationResponses:
+          - StatusCode: '200'
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Accept,Content-Type,Content-Length,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent,app_user_id,app_user_name'"
+              method.response.header.Access-Control-Allow-Methods: "'OPTIONS,GET'"
+            ResponseTemplates:
+              application/json: ''
+      ResourceId: !Ref ApiGatewayResourceWordchain
+      RestApiId: !Ref ApiGatewayRestApi
+
+  ApiGatewayMethodWordchainGet:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: GET
+      RequestParameters: {}
+      ResourceId: !Ref ApiGatewayResourceWordchain
+      RestApiId: !Ref ApiGatewayRestApi
+      ApiKeyRequired: false
+      AuthorizationType: NONE
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetDashwordchainLambdaFunction.Arn}/invocations
+      MethodResponses: []
+
+  # Rename this resource to publish a change to the API's methods.
+  ApiGatewayDeploymentPublic:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - ApiGatewayMethodWordchainGet
+      - ApiGatewayMethodWordchainOptions
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+
+  ApiGatewayStage:
+    Type: AWS::ApiGateway::Stage
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      StageName: dev
+      DeploymentId: !Ref ApiGatewayDeploymentPublic
+      MethodSettings:
+        - ResourcePath: /*
+          HttpMethod: '*'
+          LoggingLevel: 'OFF'
+          DataTraceEnabled: false
+          ThrottlingRateLimit: 5
+          ThrottlingBurstLimit: 10
+
+  ApiExecutionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: API-Gateway-Execution-Logs_qux5svesmk/dev
+      RetentionInDays: 14
+
+  ApiDomainName:
+    Type: AWS::ApiGateway::DomainName
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      DomainName: api.limpidfox.com
+      RegionalCertificateArn: !Sub arn:${AWS::Partition}:acm:us-west-2:${AWS::AccountId}:certificate/7804bac0-64d0-4a58-b9ce-f177e8fab93d
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      SecurityPolicy: TLS_1_2
+
+  ApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      DomainName: api.limpidfox.com
+      BasePath: qux5svesmk
+      RestApiId: !Ref ApiGatewayRestApi
+      Stage: dev
+
+  # Website
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: wordchain.limpidfox.com
+      WebsiteConfiguration:
+        IndexDocument: index.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        IgnorePublicAcls: false
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+
+  SiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Bucket: wordchain.limpidfox.com
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: arn:aws:s3:::wordchain.limpidfox.com/*
+
+  SiteDistribution:
+    Type: AWS::CloudFront::Distribution
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - wordchain.limpidfox.com
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        PriceClass: PriceClass_All
+        Origins:
+          - Id: S3-Website-wordchain.limpidfox.com.s3-website-us-west-2.amazonaws.com
+            DomainName: wordchain.limpidfox.com.s3-website-us-west-2.amazonaws.com
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: http-only
+              OriginSSLProtocols:
+                - TLSv1
+                - TLSv1.1
+                - TLSv1.2
+        DefaultCacheBehavior:
+          TargetOriginId: S3-Website-wordchain.limpidfox.com.s3-website-us-west-2.amazonaws.com
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - HEAD
+            - GET
+          CachedMethods:
+            - HEAD
+            - GET
+          Compress: false
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+        ViewerCertificate:
+          AcmCertificateArn: !Sub arn:${AWS::Partition}:acm:us-east-1:${AWS::AccountId}:certificate/95b15ef9-7caa-4191-8359-5899d9eae4d4
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2019
+
+  # Cost protection: over 5,000 calls in an hour blocks the API until reopened
+  ShutoffTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: wordchain-shutoff
+
+  ShutoffEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref ShutoffTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+
+  ShutoffAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: wordchain-invocations-shutoff
+      AlarmDescription: Blocks the word chain API after unusually high traffic
+      Namespace: AWS/Lambda
+      MetricName: Invocations
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref GetDashwordchainLambdaFunction
+      Statistic: Sum
+      Period: 3600
+      EvaluationPeriods: 1
+      Threshold: 5000
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref ShutoffTopic
+
+  ShutoffLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/wordchain-shutoff
+      RetentionInDays: 14
+
+  ShutoffRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: wordchain-shutoff
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub ${ShutoffLogGroup.Arn}:*
+              - Effect: Allow
+                Action: apigateway:PATCH
+                Resource: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}::/restapis/${ApiGatewayRestApi}/stages/dev
+              - Effect: Allow
+                Action: lambda:PutFunctionConcurrency
+                Resource: !GetAtt GetDashwordchainLambdaFunction.Arn
+
+  ShutoffFunction:
+    Type: AWS::Lambda::Function
+    DependsOn:
+      - ShutoffLogGroup
+    Properties:
+      FunctionName: wordchain-shutoff
+      Description: Blocks the word chain API when the traffic alarm fires
+      Runtime: python3.14
+      Handler: index.handler
+      MemorySize: 128
+      Timeout: 15
+      Role: !GetAtt ShutoffRole.Arn
+      Environment:
+        Variables:
+          REST_API_ID: !Ref ApiGatewayRestApi
+          STAGE_NAME: dev
+          FUNCTION_NAME: !Ref GetDashwordchainLambdaFunction
+      Code:
+        ZipFile: |
+          import os
+          import boto3
+
+
+          def handler(event, context):
+              boto3.client("apigateway").update_stage(
+                  restApiId=os.environ["REST_API_ID"],
+                  stageName=os.environ["STAGE_NAME"],
+                  patchOperations=[
+                      {"op": "replace", "path": "/*/*/throttling/rateLimit", "value": "0"},
+                      {"op": "replace", "path": "/*/*/throttling/burstLimit", "value": "0"},
+                  ],
+              )
+              boto3.client("lambda").put_function_concurrency(
+                  FunctionName=os.environ["FUNCTION_NAME"],
+                  ReservedConcurrentExecutions=0,
+              )
+              print("Word chain API blocked")
+
+  ShutoffPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt ShutoffFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref ShutoffTopic
+
+  ShutoffFunctionSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref ShutoffTopic
+      Protocol: lambda
+      Endpoint: !GetAtt ShutoffFunction.Arn
+
+Outputs:
+  ServerlessDeploymentBucketName:
+    Value: !Ref ServerlessDeploymentBucket
+  ServiceEndpoint:
+    Description: URL of the service endpoint
+    Value: !Sub https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/dev
+  SiteBucketName:
+    Value: !Ref SiteBucket
+  SiteDistributionId:
+    Value: !Ref SiteDistribution

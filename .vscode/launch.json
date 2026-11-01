@@ -11,7 +11,7 @@
             "preLaunchTask": "build",
             "program": "/home/moshea/.dotnet/tools/dotnet-lambda-test-tool-3.1",
             "args": [],
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/backend",
             "console": "internalConsole",
             "stopAtEntry": false,
             "internalConsoleOptions": "openOnSessionStart"

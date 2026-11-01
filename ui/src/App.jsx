@@ -121,6 +121,10 @@ class App extends Component {
         <main>
           <h1>Word Chains Finder</h1>
           <p className="intro">
+            A word chain transforms a starting word into an ending word by
+            changing one letter at a time.
+          </p>
+          <p className="intro">
             The crew passes one word along, changing one letter at a time.
             Every step must be a real word.
           </p>

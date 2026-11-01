@@ -1,3 +1,3 @@
 dotnet restore
-dotnet tool install -g Amazon.Lambda.Tools --framework netcoreapp3.1
-dotnet lambda package --configuration Release --framework netcoreapp3.1 --output-package bin/Release/netcoreapp3.1/wordchain.zip
+dotnet tool update -g Amazon.Lambda.Tools
+dotnet lambda package --configuration Release --framework net10.0 --output-package bin/Release/net10.0/wordchain.zip

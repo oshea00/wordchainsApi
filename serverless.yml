@@ -18,7 +18,7 @@ custom:
   
 provider:
   name: aws
-  runtime: dotnetcore3.1
+  runtime: dotnet10
   region: us-west-2
   stage: dev
   iamRoleStatements:
@@ -37,7 +37,7 @@ functions:
     description: GET /wordchain
     handler: CsharpHandlers::WordChains.Handler::WordChain
     package:
-      artifact: bin/Release/netcoreapp3.1/wordchain.zip
+      artifact: bin/Release/net10.0/wordchain.zip
     events:
       - http:
           path: wordchain

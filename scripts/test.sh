@@ -1,9 +1,9 @@
 #!/bin/bash
-# Builds the C# project and runs the UI tests. The C# code has no tests yet.
+# Runs the C# and UI tests.
 set -euo pipefail
 source "$(dirname "$0")/common.sh"
 
-dotnet build "$REPO_ROOT/backend" --configuration Release
+dotnet test "$REPO_ROOT/tests/backend" --configuration Release
 cd "$REPO_ROOT/ui"
 npm ci
 npm test

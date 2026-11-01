@@ -36,12 +36,15 @@ query() {
 }
 
 check "site" "$(status "$SITE_URL")" 200
+check "how it works" "$(status "$SITE_URL/how-it-works.html")" 200
 check "preflight" "$(status -X OPTIONS -H "Origin: $SITE_URL" -H 'Access-Control-Request-Method: GET' "$API_URL")" 200
-check "game over" "$(query game over)" '["game","dame","dams","dims","dies","dyes","eyes","eves","ever","over"]'
+check "game over" "$(query game over)" '["game","came","cams","cats","oats","opts","opes","open","oven","over"]'
 check "cold warm" "$(query cold warm)" '["cold","cord","word","ward","warm"]'
 check "head tail" "$(query head tail)" '["head","heal","teal","tell","tall","tail"]'
 check "lead gold" "$(query lead gold)" '["lead","load","goad","gold"]'
-check "no chain" "$(query zzzz over)" '["No word chain found :("]'
+check "no chain" "$(query echo over)" '{"code":"no_chain","message":"No word chain found"}'
+check "not in dictionary" "$(query zzzz over)" '{"code":"not_in_dictionary","message":"Word not in dictionary","words":["zzzz"]}'
+check "length mismatch" "$(query cat door)" '{"code":"length_mismatch","message":"Both words must be the same length"}'
 check "cat dog" "$(query cat dog)" '["cat","cot","dot","dog"]'
 
 if [ "$MODE" = "public" ]; then

@@ -1,22 +1,21 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace WordChains {
 
     public class WordChains {
+        // Both words must be in the dictionary. Returns an empty list when no chain exists.
         public static List<string> MakeWordChains(List<string> dictionary, string starting, string ending) 
         {
-            try 
-            {
-                var g = HammingOneGraph(dictionary,starting);
-                var bfs = new BFSPaths<string>(g,starting);
-                return bfs.PathTo(ending);
-            }
-            catch (Exception)
-            {
-                return new List<string>{ "No word chain found :(" };
-            }
+            if (starting == ending)
+                return new List<string>{ starting };
+
+            var g = HammingOneGraph(dictionary,starting);
+            if (!g.Contains(starting) || !g.Contains(ending))
+                return new List<string>();
+
+            var bfs = new BFSPaths<string>(g,starting);
+            return bfs.PathTo(ending);
         }
 
         private static Graph<string> HammingOneGraph(List<string> dictionary, string starting) 

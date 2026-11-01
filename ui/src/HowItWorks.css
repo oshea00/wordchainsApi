@@ -1,0 +1,84 @@
+.lede {
+  font-size: 1.25rem;
+}
+
+.article {
+  max-width: 680px;
+  line-height: 1.6;
+}
+
+.article h2 {
+  margin-top: 32px;
+}
+
+.article code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  color: var(--accent);
+}
+
+.article .critter-aside {
+  float: right;
+  width: 96px;
+  height: 104px;
+  margin: 0 0 8px 16px;
+}
+
+.graph {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 16px 0;
+}
+
+.graph text {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  text-anchor: middle;
+  fill: var(--on-card);
+}
+
+.graph .node {
+  fill: #9ed8ff;
+}
+
+.graph .node-path {
+  fill: var(--accent);
+}
+
+.graph .edge {
+  stroke: var(--muted);
+  stroke-width: 2;
+}
+
+.graph .edge-path {
+  stroke: var(--accent);
+  stroke-width: 4;
+}
+
+.table-box {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+caption {
+  caption-side: top;
+  color: var(--muted);
+}
+
+th,
+td {
+  padding: 6px 12px;
+  text-align: right;
+  border-bottom: 1px solid var(--line);
+}
+
+th:first-child,
+td:first-child {
+  text-align: left;
+}

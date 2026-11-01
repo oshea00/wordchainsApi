@@ -2,7 +2,7 @@
 
 A demo app that finds a chain of one-letter changes between two words. Try it at [wordchain.limpidfox.com](https://wordchain.limpidfox.com).
 
-Not all words have paths to each other, and shorter words work best. For example:
+Both words must be the same length, from 2 to 8 letters. Not all words have paths to each other, and 3 to 6 letters work best. For example:
 
 * [trout truth](https://api.limpidfox.com/qux5svesmk/wordchain?from=trout&to=truth)
 * [game over](https://api.limpidfox.com/qux5svesmk/wordchain?from=game&to=over)
@@ -15,12 +15,13 @@ Not all words have paths to each other, and shorter words work best. For example
 | `backend/` | C# Lambda function on .NET 10 |
 | `ui/` | React site built with Vite, requires Node 24 |
 | `infra/` | CloudFormation template for the AWS resources |
-| `scripts/` | Build, test, deploy and smoke test scripts |
+| `scripts/` | Build, test, deploy, smoke test and word list scripts |
+| `tests/` | C# unit tests |
 
 ## Build, test and deploy
 
 ```
-scripts/test.sh             # build the C# project and run the UI tests
+scripts/test.sh             # run the C# and UI tests
 scripts/build.sh            # create the Lambda package and the site
 scripts/deploy.sh infra     # apply infra/template.yaml
 scripts/deploy.sh api       # deploy the Lambda package
@@ -29,6 +30,29 @@ scripts/smoke.sh public     # check the live site and API
 ```
 
 Stack changes are listed for approval before they are applied. They need the AWS CLI with access to the account. Set `ALERT_EMAIL` to change the shutoff address.
+
+## API
+
+`GET /wordchain?from=<word>&to=<word>` returns the chain as a JSON array of words. Input is not case-sensitive. Failures return `{"code", "message"}`:
+
+| Status | `code` | Meaning |
+|---|---|---|
+| 400 | `invalid_word` | A word is missing, or isn't 2 to 8 letters |
+| 400 | `length_mismatch` | The words have different lengths |
+| 422 | `not_in_dictionary` | A word isn't in the list; `words` names which |
+| 404 | `no_chain` | Both words are valid, but no chain connects them |
+
+## Word list
+
+`backend/domain/words.txt` is derived from [SCOWL](http://wordlist.aspell.net/) by Kevin Atkinson, release 2020.12.07, using the American, British and shared lists up to size 60. It holds lowercase words of 2 to 8 letters. Words in `backend/domain/words-excluded.txt`, mainly offensive words, are removed.
+
+Don't edit `words.txt` by hand. To change it, edit the exclusions or the release pinned in `scripts/update-words.py`, then run:
+
+```
+scripts/update-words.py
+```
+
+This also regenerates `ui/public/third-party-notices.txt`, which carries the SCOWL copyright and license notices and is published with the site.
 
 ## Cost protection
 

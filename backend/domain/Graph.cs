@@ -97,6 +97,8 @@ namespace WordChains {
             vertices[b].Add(a);
         }
 
+        public bool Contains(T a) => vertices.ContainsKey(a);
+
         public bool IsConnected(T a, T b) {
             ResetMarked();
             var s = new ConnectedVertices<T>(this,a);

@@ -45,6 +45,10 @@ The API stays blocked until you restore it:
 scripts/deploy.sh reopen
 ```
 
+Limit changes can take about a minute to reach API Gateway, so requests may keep failing briefly after reopening.
+
+When traffic exceeds the limits, API Gateway returns 429 and the Lambda limit can return 500. The site shows a "busy" message for both.
+
 ## AWS resources
 
 `infra/template.yaml` defines the `limpid-wordchains-backend-dev` stack in us-west-2. These items are outside the stack:

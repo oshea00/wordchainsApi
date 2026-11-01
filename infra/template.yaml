@@ -30,7 +30,13 @@ Resources:
             Effect: Deny
             Principal: '*'
             Resource:
-              - !Sub arn:${AWS::Partition}:s3:::${ServerlessDeploymentBucket}/*
+              - !Join
+                - ''
+                - - 'arn:'
+                  - !Ref AWS::Partition
+                  - ':s3:::'
+                  - !Ref ServerlessDeploymentBucket
+                  - /*
             Condition:
               Bool:
                 aws:SecureTransport: false
@@ -55,7 +61,11 @@ Resources:
             Action:
               - sts:AssumeRole
       Policies:
-        - PolicyName: limpid-wordchains-backend-dev-lambda
+        - PolicyName: !Join
+            - '-'
+            - - limpid-wordchains-backend
+              - dev
+              - lambda
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -77,7 +87,12 @@ Resources:
                 Resource:
                   - '*'
       Path: /
-      RoleName: !Sub limpid-wordchains-backend-dev-${AWS::Region}-lambdaRole
+      RoleName: !Join
+        - '-'
+        - - limpid-wordchains-backend
+          - dev
+          - !Ref AWS::Region
+          - lambdaRole
 
   GetDashwordchainLambdaFunction:
     Type: AWS::Lambda::Function
@@ -90,7 +105,7 @@ Resources:
       FunctionName: limpid-wordchains-backend-dev-get-wordchain
       Handler: CsharpHandlers::WordChains.Handler::WordChain
       MemorySize: 1024
-      Role: !GetAtt IamRoleLambdaExecution.Arn
+      Role: !GetAtt [IamRoleLambdaExecution, Arn]
       Runtime: dotnet10
       Timeout: 6
       Description: GET /wordchain
@@ -99,10 +114,20 @@ Resources:
   GetDashwordchainLambdaPermissionApiGateway:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !GetAtt GetDashwordchainLambdaFunction.Arn
+      FunctionName: !GetAtt [GetDashwordchainLambdaFunction, Arn]
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/*
+      SourceArn: !Join
+        - ''
+        - - 'arn:'
+          - !Ref AWS::Partition
+          - ':execute-api:'
+          - !Ref AWS::Region
+          - ':'
+          - !Ref AWS::AccountId
+          - ':'
+          - !Ref ApiGatewayRestApi
+          - /*/*
 
   # API
   ApiGatewayRestApi:
@@ -117,7 +142,7 @@ Resources:
   ApiGatewayResourceWordchain:
     Type: AWS::ApiGateway::Resource
     Properties:
-      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
+      ParentId: !GetAtt [ApiGatewayRestApi, RootResourceId]
       PathPart: wordchain
       RestApiId: !Ref ApiGatewayRestApi
 
@@ -162,7 +187,15 @@ Resources:
       Integration:
         IntegrationHttpMethod: POST
         Type: AWS_PROXY
-        Uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetDashwordchainLambdaFunction.Arn}/invocations
+        Uri: !Join
+          - ''
+          - - 'arn:'
+            - !Ref AWS::Partition
+            - ':apigateway:'
+            - !Ref AWS::Region
+            - :lambda:path/2015-03-31/functions/
+            - !GetAtt [GetDashwordchainLambdaFunction, Arn]
+            - /invocations
       MethodResponses: []
 
   # Rename this resource to publish a change to the API's methods.
@@ -352,7 +385,7 @@ Resources:
                 Resource: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}::/restapis/${ApiGatewayRestApi}/stages/dev
               - Effect: Allow
                 Action: lambda:PutFunctionConcurrency
-                Resource: !GetAtt GetDashwordchainLambdaFunction.Arn
+                Resource: !GetAtt [GetDashwordchainLambdaFunction, Arn]
 
   ShutoffFunction:
     Type: AWS::Lambda::Function
@@ -365,7 +398,7 @@ Resources:
       Handler: index.handler
       MemorySize: 128
       Timeout: 15
-      Role: !GetAtt ShutoffRole.Arn
+      Role: !GetAtt [ShutoffRole, Arn]
       Environment:
         Variables:
           REST_API_ID: !Ref ApiGatewayRestApi
@@ -395,7 +428,7 @@ Resources:
   ShutoffPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !GetAtt ShutoffFunction.Arn
+      FunctionName: !GetAtt [ShutoffFunction, Arn]
       Action: lambda:InvokeFunction
       Principal: sns.amazonaws.com
       SourceArn: !Ref ShutoffTopic
@@ -405,7 +438,7 @@ Resources:
     Properties:
       TopicArn: !Ref ShutoffTopic
       Protocol: lambda
-      Endpoint: !GetAtt ShutoffFunction.Arn
+      Endpoint: !GetAtt [ShutoffFunction, Arn]
 
 Outputs:
   ServerlessDeploymentBucketName:

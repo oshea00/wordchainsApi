@@ -107,6 +107,8 @@ Resources:
       MemorySize: 1024
       Role: !GetAtt [IamRoleLambdaExecution, Arn]
       Runtime: dotnet10
+      Architectures:
+        - arm64
       Timeout: 6
       Description: GET /wordchain
       ReservedConcurrentExecutions: 3

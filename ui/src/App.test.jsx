@@ -21,6 +21,7 @@ beforeEach(() => {
 test('renders the search form and the rules', () => {
   render(<App />);
   expect(screen.getByRole('heading', { name: 'Word Chains Finder' })).toBeInTheDocument();
+  expect(screen.getByText(/transforms a starting word into an ending word/)).toBeInTheDocument();
   expect(screen.getByLabelText('From')).toBeInTheDocument();
   expect(screen.getByLabelText('To')).toBeInTheDocument();
   expect(screen.getByText('same length')).toBeInTheDocument();
